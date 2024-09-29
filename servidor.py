@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import time
+import signal
+import threading
 from socket import *
 
 clientes_exibicao = {} # Dicionário para armazenar os clientes de exibição (id: (endereço, tipo))
