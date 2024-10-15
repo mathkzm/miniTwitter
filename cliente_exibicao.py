@@ -9,9 +9,12 @@ import threading
 # Divide os campos da mensagem e encaminha a mensagem para a função de exibir.
 def receber_msgs(sock):
     while True:
-        msg, _ = sock.recvfrom(1024)
-        exibir_msg(msg)
-
+        try:
+            msg, _ = sock.recvfrom(1024)
+            exibir_msg(msg)
+        except socket.error as e:
+            print("Erro ao receber mensagem: {e}")
+            
 # Elaborar a função da decodificação de mensagens nos campos especificados (ID, remetente, destinatário, texto)
 def decodificar_msg(msg):
     segmentos_msg = msg.decode().split(" ")
@@ -37,7 +40,10 @@ def exibir_msg(msg):
 def criar_msg_oi(id_cliente):
     tipo = 0
     destino = 0 # Ela vai para o servidor.
-    return f"{tipo} {id_cliente} 0".encode()
+    texto = ""
+    nome_usuario = "ClienteExibicao"
+    mensagem = f"{tipo} {id_cliente} {destino} {len(texto)} {nome_usuario}"
+    return mensagem.encode()
 
 # Estabelecer a execução exatamente como o especificado no trabalho.
 # python cliente_exibicao.py <ID> <nome_usuario> <endereço_servidor:porta
