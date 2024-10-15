@@ -33,9 +33,10 @@ def exibir_msg(msg):
     else: # Envia a mensagem privada.
         print(f"[Privado] from {id_remetente} to {id_destino}: {texto}")
 
-# Cria o envio da mensagem OI
+# Cria o envio da mensagem OI com o registro do ID do cliente.
 def criar_msg_oi(id_cliente):
     tipo = 0
+    destino = 0 # Ela vai para o servidor.
     return f"{tipo} {id_cliente} 0".encode()
 
 # Estabelecer a execução exatamente como o especificado no trabalho.
@@ -65,11 +66,19 @@ def main():
 
         print("Solicitação de conexão inicial enviada ao servidor.")
 
-        # Thread usada para receber mensagens do servidor.
-        threading.Thread(target=receber_msgs,args=(sockUDP,),daemon=True).start()
+        # Espera pela resposta da solicitação
+        resposta, _ = sockUDP.recvfrom(1024)
+        tipo, remetente_id, destino_id, texto = decodificar_msg(resposta)
 
-        # Mantendo o cliente em execução.
-        while True:
-            pass
-        
+        if tipo == 0: # Recebeu OI de volta
+            print(f"Cliente de exibição {id_cliente} registrado com sucesso no servidor.")
+            # Thread usada para receber mensagens do servidor.
+            threading.Thread(target=receber_msgs,args=(sockUDP,),daemon=True).start()
+
+            # Mantendo o cliente em execução.
+            while True:
+                pass
+        else:
+            print("Erro ao registrar o cliente de exibição.")
+
 main()
