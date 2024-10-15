@@ -34,10 +34,9 @@ def exibir_msg(msg):
         print(f"[Privado] from {id_remetente} to {id_destino}: {texto}")
 
 # Cria o envio da mensagem OI
-def criar_msg_oi(id_cliente, nome_usuario):
+def criar_msg_oi(id_cliente):
     tipo = 0
-    return f"{tipo} {id_cliente} {nome_usuario}".encode()
-
+    return f"{tipo} {id_cliente} 0".encode()
 
 # Estabelecer a execução exatamente como o especificado no trabalho.
 # python cliente_exibicao.py <ID> <nome_usuario> <endereço_servidor:porta
@@ -48,6 +47,29 @@ def criar_msg_oi(id_cliente, nome_usuario):
 # Recebimento da mensagem OI da inicialização.
 # Elaborar lógica da THREAD de recebimento.
 def main():
+    if len(sys.argv) != 3:
+        print("Uso correto: python cliente_exibicao.py <ID> <endereço_servidor:porta>")
+        sys.exit(1)
+    else:
+        id_cliente = int(sys.argv[1])
+        end_servidor = sys.argv[2].split(":")
+        ip_servidor = end_servidor[0]
+        porta_servidor = int(end_servidor[1])
 
-if __name__ == "__main__":
-    main()
+        # Criação do socket UDP
+        sockUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        # Criação da mensagem OI para iniciar a conexão com o servidor.
+        msg_oi = criar_msg_oi(id_cliente)
+        sockUDP.sendto(msg_oi,(ip_servidor, porta_servidor))
+
+        print("Solicitação de conexão inicial enviada ao servidor.")
+
+        # Thread usada para receber mensagens do servidor.
+        threading.Thread(target=receber_msgs,args=(sockUDP,),daemon=True).start()
+
+        # Mantendo o cliente em execução.
+        while True:
+            pass
+        
+main()
