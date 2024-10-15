@@ -8,6 +8,9 @@ import threading
 # Função para receber mensagens.
 # Divide os campos da mensagem e encaminha a mensagem para a função de exibir.
 def receber_msgs(sock):
+    while True:
+        msg, _ = sock.recvfrom(1024)
+        exibir_mensagem(msg)
 
 # Função de exibir mensagens.
 # Decodifica a mensagem em tipo, remetente, destinatário e o texto.
@@ -27,8 +30,8 @@ def decodificar_mensagem(mensagem):
 # O endereço do servidor é dividido em IP e porta. Fazer um split a partir do : e armazenar nas variáveis de servidor IP e Porta do servidor.
 # Inicializar o sock
 # Envio da mensagem OI da inicialização.
-# Recebeimento da mensagem OI da inicialização.
-# Elaborar lógica da THREAD de recebeimento.
+# Recebimento da mensagem OI da inicialização.
+# Elaborar lógica da THREAD de recebimento.
 def main():
 
 if __name__ == "__main__":
