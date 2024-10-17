@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
-
 import socket
 import sys
 import threading
@@ -21,7 +18,7 @@ def decodificar_msg(msg):
     tipo, id_remetente, id_destino, tam_texto = struct.unpack('!4i', msg[:16])
     nome_usuario = msg[16:36].decode().strip('\x00')  # Nome do usuário com 20 caracteres
     texto = msg[36:36 + tam_texto].decode().strip('\x00')  # Texto da mensagem
-    return tipo, id_remetente, id_destino, nome_usuario, texto
+    return tipo, id_remetente, id_destino, tam_texto, nome_usuario, texto
     
 # Função de exibir mensagens.
 # Decodifica a mensagem em tipo, remetente, destinatário e o texto.
