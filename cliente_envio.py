@@ -1,74 +1,71 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
-
 import socket
 import sys
+import struct
 import threading
 
 # Função que cria a mensagem de texto.
-def criar_msg_texto(remetente_id, destino_id, texto):
-    return f"MSG {remetente_id} {destino_id} {texto}"
+def criar_msg_texto(remetente_id, destino_id, texto, username):
+    texto = texto[:140] + '\0'  # Garante que o texto tenha no máximo 140 caracteres e termina com \0
+    tamanho_texto = len(texto)
+    username = username[:20] + '\0'  # Garante que o username tenha no máximo 20 caracteres e termina com \0
+    tipo_msg = 1  # 1 = Mensagem de texto (exemplo)
+    mensagem = struct.pack('!iiii20s140s', tipo_msg, remetente_id, destino_id, tamanho_texto, username.encode(), texto.encode())
+    return mensagem
 
 # Função que cria a mensagem de TCHAU.
-def criar_msg_tchau(cliente_id):
-    return f"TCHAU {cliente_id}"
+def criar_msg_tchau(cliente_id, username):
+    username = username[:20] + '\0'  # Garante que o username tenha no máximo 20 caracteres e termina com \0
+    tipo_msg = 2  # 2 = TCHAU (exemplo)
+    mensagem = struct.pack('!iiii20s', tipo_msg, cliente_id, 0, 0, username.encode())
+    return mensagem
 
 # Função que cria a mensagem de OI
 def criar_msg_oi(cliente_id, username):
-    return f"OI {cliente_id} {username}"
+    username = username[:20] + '\0'  # Garante que o username tenha no máximo 20 caracteres e termina com \0
+    tipo_msg = 0  # 0 = OI (exemplo)
+    mensagem = struct.pack('!iiii20s', tipo_msg, cliente_id, 0, 0, username.encode())
+    return mensagem
 
-# Função que envia a mensagem.
-def enviar_msg(sock, servidor_ip, servidor_porta, cliente_id):
+# Função para enviar mensagem
+def enviar_msg(sock, servidor_ip, servidor_porta, cliente_id, username):
     while True:
-        msg = input("Digite sua mensagem (ou 'TCHAU' para sair): ")
-        if msg == "TCHAU":
-            mensagem_tchau = criar_msg_tchau(cliente_id)
-            sock.sendto(mensagem_tchau.encode(), (servidor_ip, servidor_porta))
+        texto = input("Digite a mensagem (ou TCHAU para sair): ")
+        if texto == "TCHAU":
+            mensagem = criar_msg_tchau(cliente_id, username)
+            sock.sendto(mensagem, (servidor_ip, servidor_porta))
             break
         else:
-            destino_id = int(input("Digite o ID do destinatário (0 para todos): "))
-            if destino_id < 0:  # Verifica se o ID do destinatário é válido
-                print("ERRO: O ID do destinatário deve ser um número positivo.")
-                continue
-            mensagem = criar_msg_texto(cliente_id, destino_id, msg)
-            sock.sendto(mensagem.encode(), (servidor_ip, servidor_porta))
-            print(f"Enviando mensagem: {mensagem}")
+            destino_id = int(input("Digite o ID do destinatário (0 para enviar a todos): "))
+            mensagem = criar_msg_texto(cliente_id, destino_id, texto, username)
+            sock.sendto(mensagem, (servidor_ip, servidor_porta))
 
-# Recebendo mensagens do servidor em uma thread separada
-def receber_respostas(sock):
-    while True:
-        try:
-            msg, end = sock.recvfrom(1024)
-            print(f"Mensagem recebida: {msg.decode()} de {end}")
-        except Exception as e:
-            print(f"Ocorreu um erro ao receber a mensagem: {e}")
-            break
-
-# Estabelecer a execução exatamente como o especificado no trabalho.
-# python cliente_envio.py <ID> <nome_usuario> <endereço_servidor:porta>
+# Função principal
 def main():
     if len(sys.argv) != 4:
-        print("Uso: python3 cliente_envio.py <ID> <nome_usuario> <endereço_servidor:porta>")
+        print("Uso: python cliente_envio.py <ID> <nome_usuario> <endereço_servidor:porta>")
         sys.exit(1)
 
     cliente_id = int(sys.argv[1])
     username = sys.argv[2]
-    servidor_info = sys.argv[3].split(':')
+    servidor_info = sys.argv[3].split(":")
     servidor_ip = servidor_info[0]
     servidor_porta = int(servidor_info[1])
 
-    # Inicializando o socket
+    # Inicializa o socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    # Envio da mensagem OI da inicialização
+    # Envia a mensagem OI na inicialização
     mensagem_oi = criar_msg_oi(cliente_id, username)
-    sock.sendto(mensagem_oi.encode(), (servidor_ip, servidor_porta))
-    
-    # Recebendo mensagens do servidor em uma thread separada
-    threading.Thread(target=receber_respostas, args=(sock,), daemon=True).start()
+    sock.sendto(mensagem_oi, (servidor_ip, servidor_porta))
 
-    # Chama a função para enviar mensagens
-    enviar_msg(sock, servidor_ip, servidor_porta, cliente_id)
+    # Recebe a mensagem OI de volta
+    resposta, _ = sock.recvfrom(1024)
+    print(f"Resposta do servidor: {resposta.decode()}")
+
+    # Cria uma thread para enviar mensagens
+    enviar_thread = threading.Thread(target=enviar_msg, args=(sock, servidor_ip, servidor_porta, cliente_id, username))
+    enviar_thread.start()
+    enviar_thread.join()
 
 if __name__ == "__main__":
     main()
