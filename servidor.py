@@ -5,10 +5,10 @@ import time
 import threading
 from socket import *
 import logging
+import struct
 
 # Configuração de logging para o registro das entradas e saídas dos clientes
-logging.basicConfig(filename='servidor_log.txt', level=logging.INFO,
-                    format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(filename='servidor_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 # Dicionários para armazenar os clientes
 clientes_exibicao = {}  # {id: (endereço, tipo)}
@@ -39,7 +39,7 @@ def processar_cliente():
         try:
             msg, end = socket_cliente.recvfrom(1024)
             print(f"Mensagem recebida do cliente {end}: {msg.decode()}")
-            processar_msg(msg.decode(), end)
+            processar_msg(msg, end)
         except (ConnectionResetError, OSError):
             # Trata desconexões inesperadas, remove o cliente da lista como se tivesse recebido TCHAU
             cliente_id = get_cliente_id_by_endereco(end)
@@ -55,34 +55,35 @@ def get_cliente_id_by_endereco(end):
 
 # Decodifica a mensagem e a processa.
 def processar_msg(msg, end):
-    partes = msg.split()
-    
-    if len(partes) < 3:  # Verifica se a mensagem tem pelo menos 3 partes
-        print(f"Mensagem malformada recebida de {end}: {msg}")
+    try:
+        # Desempacota a mensagem de acordo com o seu tamanho
+        tipo_msg, remetente_id, destino_id, tamanho = struct.unpack('!iiii', msg[:16])  # Apenas o cabeçalho
+        texto = msg[16:].decode().rstrip('\0')  # O restante da mensagem após o cabeçalho
+    except struct.error as e:
+        print(f"Erro ao processar a mensagem recebida de {end}: {msg}")
+        print(f"Detalhes do erro: {e}")
         return
-    
-    tipo = partes[0]
-    remetente_id = int(partes[1])
-    destino_id = int(partes[2])
-    texto = " ".join(partes[3:])
-    
-    if tipo == "MSG":
+
+    if tipo_msg == 0:  # OI
+        registrar_cliente(remetente_id, end, texto)  # Passa o nome de usuário
+        # Envia a mensagem "OI" de volta para o cliente que acabou de se registrar
+        socket_cliente.sendto(f"OI {remetente_id} 0 OI".encode(), end)
+        logging.info(f"Mensagem 'OI' enviada de volta para o cliente {remetente_id}.")
+    elif tipo_msg == 1:  # MSG
         if remetente_id in {**clientes_exibicao, **clientes_envio}:
             enviar_msg(remetente_id, destino_id, texto, end)
         else:
             print(f"Mensagem ignorada de {end}: remetente não registrado.")
-    elif tipo == "OI":
-        registrar_cliente(remetente_id, end)
-    elif tipo == "TCHAU":
+    elif tipo_msg == 2:  # TCHAU
         remover_cliente(remetente_id)
 
 # Registra o cliente (envio ou exibição) e faz log da entrada.
-def registrar_cliente(cliente_id, end):
+def registrar_cliente(cliente_id, end, username):
     if cliente_id % 2 == 0:  # Exemplo de separação por ID par/ímpar
-        clientes_exibicao[cliente_id] = (end, 'exibicao')
+        clientes_exibicao[cliente_id] = (end, 'exibicao', username)  # Adiciona o username
     else:
-        clientes_envio[cliente_id] = (end, 'envio')
-    logging.info(f"Cliente {cliente_id} (endereço: {end}) registrado.")
+        clientes_envio[cliente_id] = (end, 'envio', username)  # Adiciona o username
+    logging.info(f"Cliente {cliente_id} (endereço: {end}, nome: {username}) registrado.")
 
 # Remove o cliente da lista de exibidores ou de envio, faz log da saída.
 def remover_cliente(cliente_id):
@@ -98,12 +99,35 @@ def enviar_msg(remetente_id, destino_id, texto, endereco=None):
     if destino_id == 0:  # Envia para todos
         for cliente in clientes_exibicao.values():
             endereco_cliente = cliente[0]
-            socket_cliente.sendto(f"MSG {remetente_id} {texto}".encode(), endereco_cliente)
+            mensagem = criar_msg_texto(remetente_id, 0, texto)
+            socket_cliente.sendto(mensagem, endereco_cliente)
     elif destino_id in clientes_exibicao:
         endereco_cliente = clientes_exibicao[destino_id][0]
-        socket_cliente.sendto(f"MSG {remetente_id} {texto}".encode(), endereco_cliente)
+        mensagem = criar_msg_texto(remetente_id, destino_id, texto)
+        socket_cliente.sendto(mensagem, endereco_cliente)
     else:
         print(f"Cliente {destino_id} não encontrado.")
+
+# Função que cria a mensagem de OI
+def criar_msg_oi(cliente_id, username):
+    username = username[:20].encode() + b'\0'  # Garante que o username tenha no máximo 20 bytes e termina com \0
+    tipo_msg = 0  # 0 = OI
+    mensagem = struct.pack('!iiii20s', tipo_msg, cliente_id, 0, 0, username)
+    return mensagem
+
+# Função que cria a mensagem de texto
+def criar_msg_texto(remetente_id, destino_id, texto):
+    texto = texto[:140].encode() + b'\0'  # Garante que o texto tenha no máximo 140 bytes e termina com \0
+    tipo_msg = 1  # 1 = MSG
+    tamanho = len(texto)
+    mensagem = struct.pack('!iiii', tipo_msg, remetente_id, destino_id, tamanho) + texto
+    return mensagem
+
+# Função que cria a mensagem de TCHAU
+def criar_msg_tchau(cliente_id):
+    tipo_msg = 2  # 2 = TCHAU
+    mensagem = struct.pack('!iii', tipo_msg, cliente_id, 0)
+    return mensagem
 
 # Função principal para configurar o servidor e iniciar a comunicação
 def main():
