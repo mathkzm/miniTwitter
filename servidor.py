@@ -78,12 +78,38 @@ def processar_msg(msg, end):
         remover_cliente(remetente_id)
 
 # Registra o cliente (envio ou exibição) e faz log da entrada.
-def registrar_cliente(cliente_id, end, username):
-    if cliente_id % 2 == 0:  # Exemplo de separação por ID par/ímpar
-        clientes_exibicao[cliente_id] = (end, 'exibicao', username)  # Adiciona o username
+def registrar_cliente(remetente_id, end, username):
+    # Verificação de IDs de exibição e envio
+    if 1 <= remetente_id <= 999:
+        # Cliente de exibição: precisa garantir que nem o ID e nem (ID+1000) estejam em uso
+        if remetente_id in clientes_exibicao or (remetente_id + 1000) in clientes_envio:
+            socket_cliente.sendto(f"ERRO {remetente_id} Identificador já em uso".encode(), end)
+            logging.error(f"Registro de cliente de exibição falhou: ID {remetente_id} já em uso.")
+            return
+        else:
+            clientes_exibicao[remetente_id] = (end, username)
+            logging.info(f"Cliente de exibição registrado: {remetente_id} - {username} ({end})")
+
+    elif 1001 <= remetente_id <= 1999:
+        # Cliente de envio: garantir que o ID não está em uso
+        if remetente_id in clientes_envio:
+            socket_cliente.sendto(f"ERRO {remetente_id} Identificador já em uso".encode(), end)
+            logging.error(f"Registro de cliente de envio falhou: ID {remetente_id} já em uso.")
+            return
+        else:
+            clientes_envio[remetente_id] = (end, username)
+            logging.info(f"Cliente de envio registrado: {remetente_id} - {username} ({end})")
+    
     else:
-        clientes_envio[cliente_id] = (end, 'envio', username)  # Adiciona o username
-    logging.info(f"Cliente {cliente_id} (endereço: {end}, nome: {username}) registrado.")
+        # Se o ID estiver fora do intervalo esperado, enviar mensagem de erro
+        socket_cliente.sendto(f"ERRO {remetente_id} Identificador inválido".encode(), end)
+        logging.error(f"Tentativa de registro com ID inválido: {remetente_id}")
+        return
+
+    # Envia a confirmação de OI de volta para o cliente
+    socket_cliente.sendto(f"OI {remetente_id} 0 OI".encode(), end)
+    logging.info(f"Mensagem 'OI' enviada de volta para o cliente {remetente_id}.")
+
 
 # Remove o cliente da lista de exibidores ou de envio, faz log da saída.
 def remover_cliente(cliente_id):
