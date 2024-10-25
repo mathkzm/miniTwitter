@@ -1,89 +1,93 @@
 import socket
 import sys
-import threading
 import struct
+import threading
 
-# Função para receber mensagens.
-# Divide os campos da mensagem e encaminha a mensagem para a função de exibir.
+# Função que cria a mensagem de OI
+def criar_msg_oi(id_cliente, nome_usuario):
+    tipo = 0  # Tipo de mensagem OI
+    destino_id = 0  # ID do destinatário
+    tamanho_texto = len(nome_usuario)  # Tamanho do texto
+    # Criação da mensagem, ajustando o preenchimento para 20 e 140 bytes
+    return struct.pack('!iiii', tipo, id_cliente, destino_id, tamanho_texto) + nome_usuario.encode().ljust(20, b'\0') + b'\0' * 141
+
+def main():
+    if len(sys.argv) != 4:
+        print("Uso correto: python cliente_exibicao.py <ID> <nome_usuario> <endereço_servidor:porta>")
+        sys.exit(1)
+    
+    id_cliente = int(sys.argv[1])
+    nome_usuario = sys.argv[2]
+    end_servidor = sys.argv[3].split(":")
+    ip_servidor = end_servidor[0]
+    porta_servidor = int(end_servidor[1])
+
+    sockUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    msg_oi = criar_msg_oi(id_cliente, nome_usuario)
+    sockUDP.sendto(msg_oi, (ip_servidor, porta_servidor))
+
+    print("Solicitação de conexão inicial enviada ao servidor.")
+
+    # Processar resposta do servidor
+    try:
+        resposta, _ = sockUDP.recvfrom(176)  # Espera pela resposta correta
+        print(f"Resposta recebida do servidor: {resposta}")
+
+        tipo_resposta, remetente_id, destino_id, tamanho_texto = struct.unpack('!iiii', resposta[:16])
+        nome_usuario = resposta[16:36].decode().strip('\x00')  # Nome do usuário
+        texto = resposta[36:176].decode().strip('\x00')  # Texto 
+
+        print(f"Tipo de resposta: {tipo_resposta}, Remetente ID: {remetente_id}, Nome do usuário: {nome_usuario}, Texto: {texto}")
+
+        if tipo_resposta == 1:  # Resposta de OI
+            print(f"Cliente de exibição {remetente_id} registrado com sucesso no servidor.")
+            
+            # Inicia thread para receber mensagens do servidor
+            threading.Thread(target=receber_msgs, args=(sockUDP,), daemon=True).start()
+
+            # Mantendo o cliente em execução
+            while True:
+                pass
+
+        elif tipo_resposta == 3:  # Resposta de erro
+            erro_texto = texto
+            print(f"Erro recebido do servidor: {erro_texto}")
+            print("Encerrando o programa devido ao erro.")
+            sys.exit(1)
+
+        else:
+            print(f"Erro: resposta inesperada do servidor. Tipo: {tipo_resposta}")
+            sys.exit(1)
+
+    except struct.error as e:
+        print(f"Erro ao processar a resposta do servidor: {e}")
+        print("Possível causa: o tamanho da mensagem recebida não é o esperado.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Erro inesperado ao processar a resposta do servidor: {e}")
+        sys.exit(1)
+
+# Função para receber mensagens do servidor
 def receber_msgs(sock):
     while True:
         try:
-            msg, _ = sock.recvfrom(1024)
-            exibir_msg(msg)
-        except socket.error as e:
-            print("Erro ao receber mensagem: {e}")
-            
-# Elaborar a função da decodificação de mensagens nos campos especificados (ID, remetente, destinatário, texto)
-def decodificar_msg(msg):
-    # Desempacota os quatro primeiros inteiros e os tamanhos de nome de usuário e texto
-    tipo, id_remetente, id_destino, tam_texto = struct.unpack('!iiii', msg[:16])
-    # Desempacota a string do nome de usuário (20 bytes) e o texto (140 bytes)
-    nome_usuario = struct.unpack('20s', msg[16:36])[0].decode().strip('\x00')  
-    texto = struct.unpack('140s', msg[36:176])[0].decode().strip('\x00')  
-    
-    return tipo, id_remetente, id_destino, tam_texto, nome_usuario, texto
-    
-# Função de exibir mensagens.
-# Decodifica a mensagem em tipo, remetente, destinatário e o texto.
-# Verifica se o destinatário é 0 (exibir a todos). Nesse caso, especificar no print que é uma msg pública.
-# Se o destinatário for diferente de 0, especificar que a msg é privada e colocar o destinatário.
-def exibir_msg(msg):
-    tipo, id_remetente, id_destino, tam_texto, nome_usuario, texto = decodificar_msg(msg)
+            resposta, _ = sock.recvfrom(176)  # Espera exatamente 176 bytes
+            print(f"Resposta recebida do servidor: {resposta}")
 
-    if id_destino == 0: # Envia a mensagem para todos.
-        print(f"[Todos] from {nome_usuario} ID {id_remetente}: {texto}")
-    else: # Envia a mensagem privada.
-        print(f"[Privado] from {nome_usuario} ID {id_remetente} to {id_destino}: {texto}")
+            # Processa a resposta
+            tipo_resposta, remetente_id, destino_id, tamanho_texto = struct.unpack('!iiii', resposta[:16])
+            nome_usuario = resposta[16:36].decode().strip('\x00')
+            texto = resposta[36:176].decode().strip('\x00')
 
-# Cria o envio da mensagem OI com o registro do ID do cliente.
-def criar_msg_oi(id_cliente):
-    tipo = 0
-    destino = 0 # Ela vai para o servidor.
-    texto = ""
-    nome_usuario = "ClienteExibicao"
-    mensagem = f"{tipo} {id_cliente} {destino} {len(texto)} {nome_usuario}"
-    return mensagem.encode()
+            print(f"Nome do usuário: {nome_usuario}")
+            print(f"Texto recebido: {texto}")
 
-# Estabelecer a execução exatamente como o especificado no trabalho.
-# python cliente_exibicao.py <ID> <nome_usuario> <endereço_servidor:porta
-# Armazenar em variável o ID do cliente, o nome de usuário e o endereço do servidor.
-# O endereço do servidor é dividido em IP e porta. Fazer um split a partir do : e armazenar nas variáveis de servidor IP e Porta do servidor.
-# Inicializar o sock
-# Envio da mensagem OI da inicialização.
-# Recebimento da mensagem OI da inicialização.
-# Elaborar lógica da THREAD de recebimento.
-def main():
-    if len(sys.argv) != 3:
-        print("Uso correto: python cliente_exibicao.py <ID> <endereço_servidor:porta>")
-        sys.exit(1)
-    else:
-        id_cliente = int(sys.argv[1])
-        end_servidor = sys.argv[2].split(":")
-        ip_servidor = end_servidor[0]
-        porta_servidor = int(end_servidor[1])
+        except struct.error as e:
+            print(f"Erro ao desempacotar a resposta: {e}")
+            print("Erro: formato de resposta inesperado.")
+        except Exception as e:
+            print(f"Erro inesperado: {e}")
 
-        # Criação do socket UDP
-        sockUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        # Criação da mensagem OI para iniciar a conexão com o servidor.
-        msg_oi = criar_msg_oi(id_cliente)
-        sockUDP.sendto(msg_oi,(ip_servidor, porta_servidor))
-
-        print("Solicitação de conexão inicial enviada ao servidor.")
-
-        # Espera pela resposta da solicitação
-        resposta, _ = sockUDP.recvfrom(1024)
-        tipo, remetente_id, destino_id, texto = decodificar_msg(resposta)
-
-        if tipo == 0: # Recebeu OI de volta
-            print(f"Cliente de exibição {id_cliente} registrado com sucesso no servidor.")
-            # Thread usada para receber mensagens do servidor.
-            threading.Thread(target=receber_msgs,args=(sockUDP,),daemon=True).start()
-
-            # Mantendo o cliente em execução.
-            while True:
-                pass
-        else:
-            print("Erro ao registrar o cliente de exibição.")
-
-main()
+if __name__ == "__main__":
+    main()
