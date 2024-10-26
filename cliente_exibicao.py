@@ -55,6 +55,10 @@ def main():
             print(f"Erro recebido do servidor: {erro_texto}")
             print("Encerrando o programa devido ao erro.")
             sys.exit(1)
+        
+        elif tipo_resposta == 4:  # Resposta de LISTAR
+            lista_cliente_envio_online = texto
+            print(f"Clientes de envio conectados: {lista_cliente_envio_online}")
 
         else:
             print(f"Erro: resposta inesperada do servidor. Tipo: {tipo_resposta}")
