@@ -132,7 +132,7 @@ def recebe_oi_cliente(remetente_id, endereco, nome_remetente):
     sucesso = registrar_cliente(remetente_id, endereco, nome_remetente)
     if sucesso:
         # Envia uma resposta de sucesso
-        resposta = struct.pack("!iiii", 1, remetente_id, 0, 0)
+        resposta = struct.pack("!iiii", 0, remetente_id, 0, 0)
         socket_cliente.sendto(resposta, endereco)
 
 def enviar_msg(remetente_id, destino_id, texto, endereco=None, username=None):
