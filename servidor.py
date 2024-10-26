@@ -260,21 +260,22 @@ def remover_cliente(remetente_id):
 
 # Função que cria a mensagem de texto        
 def criar_msg_texto(remetente_id, destino_id, texto, username):
-
+    
     if username is None:
         username = ''
 
     # Calcula o tamanho do texto
     tamanho_texto = len(texto)
-    
+
     # Cria a mensagem usando struct
     mensagem = struct.pack(
-        '!iii20s140s',  # Formato da mensagem
+        '!IIII20s140s',  # Formato da mensagem
         1,  # Tipo de mensagem
         remetente_id,  # ID do remetente
         destino_id,  # ID do destinatário
-        username.encode().ljust(20, b'\x00'),  # Nome do usuário, preenchido com bytes nulos
-        texto.encode().ljust(140, b'\x00')  # Texto da mensagem, preenchido com bytes nulos
+        tamanho_texto,  # Passar o tamanho do texto aqui
+        username.encode().ljust(20, b'\0'),  # Nome do usuário, preenchido com bytes nulos
+        texto.encode().ljust(140, b'\0')  # Texto da mensagem, preenchido com bytes nulos
     )
     return mensagem
 ##################################################################################################################################################################################################
