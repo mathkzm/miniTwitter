@@ -109,7 +109,7 @@ def main():
             tipo_resposta, remetente_id, destino_id, tamanho_texto = struct.unpack('!iiii', resposta[:16])
 
             # Tratamento para resposta de OI
-            if tipo_resposta == 1 and tamanho_texto == 0:
+            if tipo_resposta == 0 and tamanho_texto == 0:
                 print("Conexão estabelecida com sucesso com o servidor. OI recebido.")
                 
                 # Cria uma thread para enviar mensagens
