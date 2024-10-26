@@ -118,7 +118,7 @@ def processar_msg(msg, end):
         # elif tipo_msg == 3:  # ERRO
         #    enviar_erro(remetente_id)
         elif tipo_msg == 4:  # LISTAR
-            listar_clientes_ativos(socket_cliente, end)
+            enviar_lista_clientes_envio()
     
     except struct.error as e:
         print(f"Erro ao processar a mensagem recebida de {end}: {msg}")
@@ -178,18 +178,31 @@ def enviar_erro(endereco, mensagem_erro):
     mensagem = struct.pack("!iiii140s", tipo_msg, remetente_id, destinatario_id, len(texto_erro), texto_erro)
     socket_cliente.sendto(mensagem, endereco)
     
-def listar_clientes_ativos(socket_cliente, end):
-    
-    if not clientes_exibicao:
-        socket_cliente.sendto("Nenhum cliente exibidor ativo.".encode(), end)
-        return
+def enviar_lista_clientes_envio():
+    tipo_mensagem = 4  # Supondo que 4 é o tipo para resposta de LISTAR
+    id_remetente = 0   # ID do servidor
+    id_destinatario = 0  # ID do cliente destino, ou 0 para broadcast
 
-    lista_clientes = "Clientes exibidores ativos:\n"
-    for client_id, (client_end, username) in clientes_exibicao.items():
-        lista_clientes += f"ID: {client_id}, Usuário: {username}\n"
+    # Lista de IDs como texto
+    lista_ids = ", ".join(map(str, clientes_envio.keys()))  # Formata os IDs como "1002, 1003"
+    tamanho_texto = len(lista_ids)
+    nome_remetente = "Servidor".ljust(20, '\0')  # Nome "Servidor" preenchido até 20 caracteres
+    texto = lista_ids.ljust(140, '\0')  # Lista de IDs preenchida até 140 caracteres
 
-    socket_cliente.sendto(lista_clientes.encode(), end)
-    logging.info(f"Lista de clientes ativos enviada para {end}.")    
+    # Empacota a mensagem em bytes
+    mensagem = struct.pack(
+        '!IIII20s140s', 
+        tipo_mensagem, 
+        id_remetente, 
+        id_destinatario, 
+        tamanho_texto, 
+        nome_remetente.encode(), 
+        texto.encode()
+    )
+
+    # Envia a mensagem a todos os clientes de exibição
+    for cliente in clientes_exibicao.values():
+        socket_cliente.sendto(mensagem, cliente[0]) 
 
 ##################################################################################################################################################################################################
 ##################################################################################################################################################################################################
