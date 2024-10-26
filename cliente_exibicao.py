@@ -40,7 +40,7 @@ def main():
 
         print(f"Tipo de resposta: {tipo_resposta}, Remetente ID: {remetente_id}, Nome do usuário: {nome_usuario}, Texto: {texto}")
 
-        if tipo_resposta == 1:  # Resposta de OI
+        if tipo_resposta == 0:  # Resposta de OI
             print(f"Cliente de exibição {remetente_id} registrado com sucesso no servidor.")
             
             # Inicia thread para receber mensagens do servidor
@@ -49,6 +49,8 @@ def main():
             # Mantendo o cliente em execução
             while True:
                 pass
+        elif tipo_resposta == 1:
+                print("recebi mensagem")
 
         elif tipo_resposta == 3:  # Resposta de erro
             erro_texto = texto
