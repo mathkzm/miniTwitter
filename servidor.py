@@ -13,9 +13,6 @@ clientes_envios_conectados = 0
 clientes_exibicao_conectados = 0
 tempo_inicio = time.time()
 
-##################################################################################################################################################################################################
-##################################################################################################################################################################################################
-
 # Configuração do logging para registrar em um arquivo
 logging.basicConfig(
     filename="log_servidor.log",  # Arquivo onde os logs serão armazenados
@@ -58,9 +55,6 @@ def enviar_mensagem_periodica():
             socket_cliente.sendto(mensagem, endereco)
         time.sleep(60)  # Envia a cada 60 segundos
 
-##################################################################################################################################################################################################
-##################################################################################################################################################################################################
-
 # Recebe as mensagens dos clientes e processa conforme o tipo.
 def processar_cliente():
     
@@ -68,7 +62,6 @@ def processar_cliente():
         try:
             msg, end = socket_cliente.recvfrom(1024)
             print(f"Mensagem recebida do cliente {end}: {msg}")  # Exibe a mensagem bruta recebida
-            # Não tente decodificar diretamente a mensagem aqui, passe para processar_msg
             processar_msg(msg, end)
         except UnicodeDecodeError as e:
             print(f"Erro de decodificação da mensagem recebida de {end}: {msg}")
@@ -87,21 +80,18 @@ def get_cliente_id_by_endereco(end):
             return cliente_id
     return None
 
-##################################################################################################################################################################################################
-##################################################################################################################################################################################################
-
 def processar_msg(msg, end):
     
     try:
-        # Tente desempacotar os primeiros 16 bytes (quatro inteiros)
+        # Desempacota os primeiros 16 bytes (quatro inteiros)
         tipo_msg, remetente_id, destino_id, tamanho = struct.unpack('!iiii', msg[:16])
         print(f"tipo_msg: {tipo_msg}, remetente_id: {remetente_id}, destino_id: {destino_id}, tamanho: {tamanho}")
         
-        # Tente decodificar o nome do usuário (20 caracteres)
+        # Decodifica o nome do usuário (20 caracteres)
         nome_usuario = msg[16:36].decode().rstrip('\0')
         print(f"Nome do usuário: {nome_usuario}")
         
-        # Se houver texto, decodifique o texto a partir do byte 36
+        # Decodifica o texto a partir do byte 36
         if tamanho > 0:
             texto = msg[36:36 + tamanho].decode().rstrip('\0')
         else:
@@ -115,8 +105,6 @@ def processar_msg(msg, end):
             enviar_msg(remetente_id, destino_id, texto, end, nome_usuario)
         elif tipo_msg == 2:  # TCHAU
             remover_cliente(remetente_id)
-        # elif tipo_msg == 3:  # ERRO
-        #    enviar_erro(remetente_id)
         elif tipo_msg == 4:  # LISTAR
             enviar_lista_clientes_envio()
     
@@ -124,9 +112,6 @@ def processar_msg(msg, end):
         print(f"Erro ao processar a mensagem recebida de {end}: {msg}")
         print(f"Detalhes do erro: {e}")
     
-##################################################################################################################################################################################################
-##################################################################################################################################################################################################
-
 def recebe_oi_cliente(remetente_id, endereco, nome_remetente):
     
     sucesso = registrar_cliente(remetente_id, endereco, nome_remetente)
@@ -154,9 +139,9 @@ def enviar_msg(remetente_id, destino_id, texto, endereco=None, username=None):
         mensagem = criar_msg_texto(remetente_id, destino_id, texto, username)
         socket_cliente.sendto(mensagem, endereco_cliente)
         
-        # Retransmitir para todos os clientes de exibição, exceto o destinatário
+        # Retransmite para todos os clientes de exibição, exceto o destinatário
         for cliente_id, cliente_info in clientes_exibicao.items():
-            if cliente_id != destino_id:  # Evita duplicar mensagem para o destinatário
+            if cliente_id != destino_id:  # Evita duplicar a mensagem para o destinatário
                 endereco_exibicao = cliente_info[0]
                 socket_cliente.sendto(mensagem, endereco_exibicao)
         
@@ -213,10 +198,7 @@ def enviar_lista_clientes_envio():
     for cliente in clientes_exibicao.values():
         socket_cliente.sendto(mensagem, cliente[0]) 
 
-##################################################################################################################################################################################################
-##################################################################################################################################################################################################
-
-# Registra o cliente (envio ou exibição) e faz log da entrada.
+# Registra o cliente (envio ou exibição) e faz o log da entrada.
 def registrar_cliente(remetente_id, end, username):
     
     global clientes_exibicao_conectados, clientes_envios_conectados
@@ -233,7 +215,7 @@ def registrar_cliente(remetente_id, end, username):
             logging.error(f"Tentativa de registro com ID exibidor conflitante: {remetente_id + 1000}")
             return False
 
-        # Adiciona cliente de exibição
+        # Adiciona o cliente de exibição
         clientes_exibicao[remetente_id] = (end, username)
         clientes_exibicao_conectados += 1
         logging.info(f"Cliente exibidor {username} (ID {remetente_id}) registrado com sucesso.")
@@ -251,7 +233,7 @@ def registrar_cliente(remetente_id, end, username):
             logging.error(f"Tentativa de registro com ID de envio conflitante: {remetente_id - 1000}")
             return False
 
-        # Adiciona cliente de envio
+        # Adiciona o cliente de envio
         clientes_envio[remetente_id] = (end, username)
         clientes_envios_conectados += 1
         logging.info(f"Cliente de envio {username} (ID {remetente_id}) registrado com sucesso.")
@@ -262,7 +244,7 @@ def registrar_cliente(remetente_id, end, username):
         logging.error(f"Tentativa de registro com ID inválido: {remetente_id}")
         return False
     
-# Remove o cliente da lista de exibidores ou de envio, faz log da saída.
+# Remove o cliente da lista de exibidores ou de envio, e faz o log da saída.
 def remover_cliente(remetente_id):
     
     global clientes_exibicao_conectados, clientes_envios_conectados
@@ -295,13 +277,11 @@ def criar_msg_texto(remetente_id, destino_id, texto, username):
         1,  # Tipo de mensagem
         remetente_id,  # ID do remetente
         destino_id,  # ID do destinatário
-        tamanho_texto,  # Passar o tamanho do texto aqui
+        tamanho_texto,  # Tamanho do texto
         username.encode().ljust(20, b'\0'),  # Nome do usuário, preenchido com bytes nulos
         texto.encode().ljust(140, b'\0')  # Texto da mensagem, preenchido com bytes nulos
     )
     return mensagem
-##################################################################################################################################################################################################
-##################################################################################################################################################################################################
     
 # Função principal para configurar o servidor e iniciar a comunicação
 def main():
@@ -311,10 +291,10 @@ def main():
 
     print("Servidor iniciado e aguardando mensagens...")
 
-    # Cria uma thread para envio de mensagens periódicas
+    # Thread para envio de mensagens periódicas
     threading.Thread(target=enviar_mensagem_periodica, daemon=True).start()
 
-    # Cria uma thread para processar novos clientes
+    # Thread para processar novos clientes
     threading.Thread(target=processar_cliente, daemon=True).start()
 
     # Mantém o servidor rodando indefinidamente
