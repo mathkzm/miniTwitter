@@ -30,7 +30,7 @@ def main():
 
     print("Solicitação de conexão inicial enviada ao servidor.")
 
-    # Processar resposta do servidor
+    # Processa a resposta do servidor
     try:
         resposta, _ = sockUDP.recvfrom(176)  # Espera pela resposta correta
         print(f"Resposta recebida do servidor: {resposta}")
@@ -44,10 +44,10 @@ def main():
         if tipo_resposta == 0:  # Resposta de OI
             print(f"Cliente de exibição {remetente_id} registrado com sucesso no servidor.")
             
-            # Inicia thread para receber mensagens do servidor
+            # Inicia a thread para receber mensagens do servidor
             threading.Thread(target=receber_msgs, args=(sockUDP,), daemon=True).start()
 
-            # Mantendo o cliente em execução
+            # Mantém o cliente em execução
             while True:
                 pass
 
@@ -69,7 +69,7 @@ def main():
         print(f"Erro inesperado ao processar a resposta do servidor: {e}")
         sys.exit(1)
 
-# Função para receber mensagens do servidor
+# Função para receber as mensagens do servidor
 def receber_msgs(sock):
     while True:
         try:
@@ -80,9 +80,6 @@ def receber_msgs(sock):
             tipo_resposta, remetente_id, destino_id, tamanho_texto = struct.unpack('!iiii', resposta[:16])
             nome_usuario = resposta[16:36].decode().strip('\x00')
             texto = resposta[36:176].decode().strip('\x00')
-
-            #print(f"Nome do usuário: {nome_usuario}")
-            #print(f"Texto recebido: {texto}")
             
             if tipo_resposta == 1:
                 print(f"Tipo de resposta: {tipo_resposta}, Remetente ID: {remetente_id}, Nome do usuário: {nome_usuario}, Destino_id: {destino_id} Texto: {texto}")
