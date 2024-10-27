@@ -142,15 +142,24 @@ def enviar_msg(remetente_id, destino_id, texto, endereco=None, username=None):
             endereco_cliente = cliente[0]
             mensagem = criar_msg_texto(remetente_id, 0, texto, username)
             socket_cliente.sendto(mensagem, endereco_cliente)
+            
     elif destino_id in clientes_exibicao:
         endereco_cliente = clientes_exibicao[destino_id][0]
         mensagem = criar_msg_texto(remetente_id, destino_id, texto, username)
         socket_cliente.sendto(mensagem, endereco_cliente)
+        
     elif destino_id in clientes_envio:
         print(f"Enviando mensagem para cliente de envio {destino_id}.")
         endereco_cliente = clientes_envio[destino_id][0]
         mensagem = criar_msg_texto(remetente_id, destino_id, texto, username)
         socket_cliente.sendto(mensagem, endereco_cliente)
+        
+        # Retransmitir para todos os clientes de exibição, exceto o destinatário
+        for cliente_id, cliente_info in clientes_exibicao.items():
+            if cliente_id != destino_id:  # Evita duplicar mensagem para o destinatário
+                endereco_exibicao = cliente_info[0]
+                socket_cliente.sendto(mensagem, endereco_exibicao)
+        
     else:
         print(f"Cliente {destino_id} não encontrado.")
         
