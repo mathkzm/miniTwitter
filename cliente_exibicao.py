@@ -11,6 +11,7 @@ def criar_msg_oi(id_cliente, nome_usuario):
     # Criação da mensagem, ajustando o preenchimento para 20 e 140 bytes
     return struct.pack('!iiii', tipo, id_cliente, destino_id, tamanho_texto) + nome_usuario.encode().ljust(20, b'\0') + b'\0' * 141
 
+
 def main():
     if len(sys.argv) != 4:
         print("Uso correto: python cliente_exibicao.py <ID> <nome_usuario> <endereço_servidor:porta>")
@@ -38,7 +39,7 @@ def main():
         nome_usuario = resposta[16:36].decode().strip('\x00')  # Nome do usuário
         texto = resposta[36:176].decode().strip('\x00')  # Texto 
 
-        print(f"Tipo de resposta: {tipo_resposta}, Remetente ID: {remetente_id}, Nome do usuário: {nome_usuario}, Texto: {texto}")
+        print(f"Tipo de resposta: {tipo_resposta}, Remetente ID: {remetente_id}, Nome do usuário: {nome_usuario}, Destino_id: {destino_id} Texto: {texto}")
 
         if tipo_resposta == 0:  # Resposta de OI
             print(f"Cliente de exibição {remetente_id} registrado com sucesso no servidor.")
@@ -49,8 +50,6 @@ def main():
             # Mantendo o cliente em execução
             while True:
                 pass
-        elif tipo_resposta == 1:
-                print("recebi mensagem")
 
         elif tipo_resposta == 3:  # Resposta de erro
             erro_texto = texto
@@ -58,10 +57,6 @@ def main():
             print("Encerrando o programa devido ao erro.")
             sys.exit(1)
         
-        elif tipo_resposta == 4:  # Resposta de LISTAR
-            lista_cliente_envio_online = texto
-            print(f"Clientes de envio conectados: {lista_cliente_envio_online}")
-
         else:
             print(f"Erro: resposta inesperada do servidor. Tipo: {tipo_resposta}")
             sys.exit(1)
@@ -86,8 +81,18 @@ def receber_msgs(sock):
             nome_usuario = resposta[16:36].decode().strip('\x00')
             texto = resposta[36:176].decode().strip('\x00')
 
-            print(f"Nome do usuário: {nome_usuario}")
-            print(f"Texto recebido: {texto}")
+            #print(f"Nome do usuário: {nome_usuario}")
+            #print(f"Texto recebido: {texto}")
+            
+            if tipo_resposta == 1:
+                print(f"Tipo de resposta: {tipo_resposta}, Remetente ID: {remetente_id}, Nome do usuário: {nome_usuario}, Destino_id: {destino_id} Texto: {texto}")
+                
+            elif tipo_resposta == 3:  # Resposta de erro
+                erro_texto = texto
+                print(f"Erro recebido do servidor: {erro_texto}")
+            
+            elif tipo_resposta == 4:  # Resposta de LISTAR
+                print(f"Clientes de envio conectados: {texto}")
 
         except struct.error as e:
             print(f"Erro ao desempacotar a resposta: {e}")
