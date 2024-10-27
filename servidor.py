@@ -105,6 +105,8 @@ def processar_msg(msg, end):
             enviar_msg(remetente_id, destino_id, texto, end, nome_usuario)
         elif tipo_msg == 2:  # TCHAU
             remover_cliente(remetente_id)
+        elif tipo_msg == 3: # ERRO
+            enviar_erro()
         elif tipo_msg == 4:  # LISTAR
             enviar_lista_clientes_envio()
     
