@@ -74,7 +74,7 @@ def enviar_msg(sock, servidor_ip, servidor_porta, cliente_id, username):
         else:
             try:
                 destino_id = int(input("Digite o ID do destinatário (0 para enviar a todos): "))
-                mensagem = criar_msg_texto(cliente_id, destino_id, texto, username)  # Adicione o username aqui
+                mensagem = criar_msg_texto(cliente_id, destino_id, texto, username)  
                 sock.sendto(mensagem, (servidor_ip, servidor_porta))
             except ValueError:
                 print("ID do destinatário deve ser um número.")
