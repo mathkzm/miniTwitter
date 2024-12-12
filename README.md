@@ -1,5 +1,6 @@
 # Trabalho de Redes de Computadores - Mini Twitter
 Repositório com os arquivos referentes ao primeiro trabalho da disciplina de Redes de Computadores.
+
 Alunos: Maria Eduarda de Paula Duarte, Matheus Kazumi Silva Miyashiro e Pedro Henrique Conte de Araujo.
 
 # Sobre
